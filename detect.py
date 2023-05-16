@@ -1,4 +1,5 @@
 import argparse
+import logging
 import time
 from pathlib import Path
 
@@ -17,8 +18,6 @@ from utils.torch_utils import select_device, load_classifier, time_synchronized,
 import pandas as pd
 from IPython.display import display
 import os
-
-import streamlit as st
 
 parser = argparse.ArgumentParser()
 
@@ -121,6 +120,7 @@ def detect(opt, save_img=False):
             save_path = str(save_dir / p.name)  # img.jpg
             txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+            dObject = 0
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
@@ -129,6 +129,7 @@ def detect(opt, save_img=False):
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    dObject = f"{n}"
 
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
@@ -140,12 +141,13 @@ def detect(opt, save_img=False):
 
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]} {conf:.2f}'
-                        plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=4)
+                        plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=2)
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
-            dObject = f"{n}"
+
+
             detected.append(dObject)  # changes made by GASE
             fName.append(p.name)  # changes made by GASE
             if (int(dObject) > 0):
@@ -163,7 +165,6 @@ def detect(opt, save_img=False):
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
                     print(f" The image with the result is saved in: {save_path}")
-                    st.write(f" The image with the result is saved in: {save_path}")
                 else:  # 'video' or 'stream'
                     if vid_path != save_path:  # new video
                         vid_path = save_path
