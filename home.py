@@ -297,7 +297,7 @@ def map_gase():
         colors = ['blue', 'green', 'yellow', 'red']
         vmin = gase_dataset['Detected'].min()
         vmax = gase_dataset['Detected'].max()
-        new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12, width=50, height=20)
+        new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12)
         # Add the updated heatmap layer
         new_map.add_heatmap(
             gase_dataset,
