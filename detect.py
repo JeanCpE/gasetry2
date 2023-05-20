@@ -144,7 +144,7 @@ def detect(opt, save_img=False):
                         if im0.shape[0] < 720:
                             plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=2)
                         else:
-                            plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=6)
+                            plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=5)
 
             # Print time (inference + NMS)
             print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
