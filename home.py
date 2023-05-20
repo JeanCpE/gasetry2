@@ -37,6 +37,8 @@ from google.oauth2 import service_account
 from googleapiclient.http import MediaIoBaseUpload, MediaFileUpload
 import io
 
+from Colorbar import Colorbar
+
 import logging
 import shutil
 
@@ -428,26 +430,24 @@ def map_gase():
             min_opacity=0.5,
         )
 
-        # # Get the width of the map
-        # map_width = m.width
+        # color_bar_width = 5
+        # colors = ['blue', 'red']
+        # new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12, width=int(color_bar_width))
         #
-        # # Extract the numerical value
-        # numeric_width = float(map_width[0])
-        #
-        # # Convert the percentage width to pixels if using JAVA
-        # #container_width = numeric_width * window.innerWidth / 100
-        # # Set the container width in pixels
-        # container_width = numeric_width * 10  # Adjust the scaling factor as needed
-        #
-        # # Print the width in pixels
-        # print("Map width (pixels):", container_width)
-        # color_bar_width = container_width*0.5
-        color_bar_width = 5
+        # # This is used to display the map within the bounded settings of Width and Height
+        # new_map.to_streamlit(add_layer_control=True)
+
+        # Set the parameters
         colors = ['blue', 'red']
-        new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12, width=int(color_bar_width))
+        font_size = 16
+        width_percentage = 100
+
+        # Create a colorbar instance
+        colorbar = Colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=font_size, width_percentage=width_percentage)
 
         # This is used to display the map within the bounded settings of Width and Height
         new_map.to_streamlit(add_layer_control=True)
+        st.markdown(colorbar.to_html(), unsafe_allow_html=True)
 
     # Initial heatmap
     update_heatmap()
