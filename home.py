@@ -161,6 +161,7 @@ def detection(image_file, text):
             f"<div style='text-align: center;font-size: 24px;font-weight: bold;'> No GAS Eggs Detected </div>",
             unsafe_allow_html=True)
     print(f'number of detection:{gase_detection}')
+    delete_uploads_local("uploads/" + file_name)
     display(gase_detection)
     return gase_detection  # number of detection
 
@@ -196,6 +197,13 @@ def delete_detect_local():
             print("Folder deleted successfully.")
         except FileNotFoundError:
             print("Folder not found.")
+def delete_uploads_local(image_path):
+    # Delete the image file
+    try:
+        os.remove(image_path)
+        print("Image file deleted successfully.")
+    except FileNotFoundError:
+        print("Image file not found.")
 
 def check_exif(uploaded_file):
     img = Image.open(uploaded_file)
@@ -428,53 +436,33 @@ def main():
                 logging.info(f"uploaded_file is not None")
                 delete_detect_local()
 
-                # upload_results = get_recent(uploads_folder_id)
-                # if 'files' in upload_results:
-                #     file = upload_results['files'][0]
-                    # image_url = file['webContentLink']
-                    # st.write("Most recent image:")
-                    # st.image(image_url)
-                    # st.write("Name:", file['name'])
-                    # st.write("ID:", file['id'])
-                # else:
-                #     st.write("No image found in the folder.")
-
-                # if files:
-                #     # file = files[0]
-                #     # print(f"Most recently uploaded file: {file['name']} ({file['id']})")
-                #     print("Files:")
-                #     for file in files:
-                #         print(f"{file['name']} ({file['id']})[{file['webContentLink']}]")
-                # else:
-                #     print("No files found in Drive.")
-
                 # Read the uploaded file and convert it into an image object
                 logging.info(f"displaying uploaded_file")
                 img = st.image(load_image(uploaded_file))
                 logging.info(f"uploaded_file displayed")
 
                 if check_exif(uploaded_file):
-                    logging.info(f"detection(uploaded_file)")
-                    gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
+                    try:
+                        logging.info(f"detection(uploaded_file)")
+                        gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
+                        logging.info(f"detection done. gase_detected= {gase_detected}")
+                        new_image_path = show_detection(uploaded_file)  # shall return file path
+                        logging.info(f"new_image_path = {new_image_path}")
 
-                    logging.info(f"detection done. gase_detected= {gase_detected}")
-                    new_image_path = show_detection(uploaded_file)  # shall return file path
-                    logging.info(f"new_image_path = {new_image_path}")
+                        # Display image with bounding boxes
+                        img.image(new_image_path, caption='New Image')
+                        logging.info(f"Image Changed")
+                        if int(gase_detected) > 0:
+                            logging.info(f"getting GPS of upload")
+                            upload_gps(uploaded_file, int(gase_detected))
+                            upload_to_drive(uploaded_file, uploads_folder_id)
 
-                    # Display image with bounding boxes
-                    img.image(new_image_path, caption='New Image')
-                    logging.info(f"Image Changed")
-                    if int(gase_detected) > 0:
-                        logging.info(f"getting GPS of upload")
-                        upload_gps(uploaded_file, int(gase_detected))
-                        upload_to_drive(uploaded_file, uploads_folder_id)
-
-                        # Wait for 100 milliseconds
-                        time.sleep(2.0)
-                        last_exp_path = new_image_path
-                        upload_to_drive(last_exp_path, detected_folder_id)
-
-
+                            # Wait for 100 milliseconds
+                            time.sleep(2.0)
+                            last_exp_path = new_image_path
+                            upload_to_drive(last_exp_path, detected_folder_id)
+                    except:
+                        st.error("An error has occured in detection", icon="🚩")
         elif option == "Camera":
             lat, lon = camera_gps()
             st.write("Please drag and drop a photo below:")
@@ -485,18 +473,28 @@ def main():
                 logging.info(f"displaying image_file")
                 img = st.image(load_image(image_file))
                 logging.info(f"image_file displayed")
-                # Start detection
-                logging.info(f"detection(uploaded_file)")
-                gase_detected = detection(image_file, text)
-                logging.info(f"detection done. gase_detected= {gase_detected}")
-                new_image_path = show_detection(image_file)  # shall return file path
-                logging.info(f"new_image_path = {new_image_path}")
-                img.image(new_image_path, caption='New Image')
-                logging.info(f"Image Changed")
-                if int(gase_detected) > 0:
-                    logging.info(f"getting GPS of device")
-                    gps_to_csv(lat, lon, gase_detected)
-            image_file = None
+                try:
+                    # Start detection
+                    logging.info(f"detection(uploaded_file)")
+                    gase_detected = detection(image_file, text)
+                    logging.info(f"detection done. gase_detected= {gase_detected}")
+                    new_image_path = show_detection(image_file)  # shall return file path
+                    # Show detection
+                    logging.info(f"new_image_path = {new_image_path}")
+                    img.image(new_image_path, caption='New Image')
+                    logging.info(f"Image Changed")
+
+                    if int(gase_detected) > 0:
+                        upload_to_drive(image_file, uploads_folder_id)
+                        logging.info(f"getting GPS of device")
+                        gps_to_csv(lat, lon, gase_detected)
+
+                        # Wait for 100 milliseconds
+                        time.sleep(2.0)
+                        last_exp_path = new_image_path
+                        upload_to_drive(last_exp_path, detected_folder_id)
+                except:
+                    st.error("An error has occured in detection", icon="🚩")
 
     elif choice == "GAS Eggs Heatmap":
         map_gase()
