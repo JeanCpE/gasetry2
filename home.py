@@ -46,7 +46,7 @@ logging.basicConfig(filename=log_file, level=logging.INFO)
 
 # ------START----
 logging.info('~~APP STARTED~~')
-
+#----- Google Drive ------
 # Set the Google Drive API credentials
 credentials = service_account.Credentials.from_service_account_info(
     st.secrets["gdata_drive"],
@@ -57,6 +57,29 @@ credentials = service_account.Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=credentials)
 uploads_folder_id = "1YVBCShIKrM4JTBtrtxERrG_DiCnIz7ok"
 detected_folder_id = "1nDqReeYv1OL_mKKKHjj8iUkGKh8islBZ"
+
+#------Google Sheets--------------
+import gspread
+sheets_credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gdata_sheets"],
+    scopes=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+)
+
+# Authenticate and open the Google Sheet
+client = gspread.authorize(sheets_credentials)
+spreadsheet = client.open('GASE_Detect')
+worksheet = spreadsheet.sheet1
+
+# # Update a cell value
+# sheet.update('A1', 'New Value')
+#
+# # Get all values from a range
+# values = sheet.get_all_values()
+# print(values)
+#
+# # Add a new row
+# new_row = ['Value 1', 'Value 2', 'Value 3']
+# sheet.append_row(new_row)
 
 
 def get_recent(folder_id):
@@ -284,20 +307,45 @@ def gps_to_csv(lat, lon, gase_detected):
     # df_master = pd.read_csv( "C:/testGPS algo/gtag.csv")
     df_temporary = pd.DataFrame({'Latitude': [lat],
                                  'Longitude': [lon],
-                                 # 'Altitude': [alt],
                                  'Detected': [gase_detected]
+                                 })
+                                 # 'Altitude': [alt],
                                  #  'Time':[],
                                  #  'Date':[]
-                                 })
+
     # ---Fill zero values with 0--
     df_temporary = df_temporary.dropna(how='any')
 
     # ------Export to csv--------
-    filename = 'gase_temp.csv'
-    if os.path.exists(filename):
-        df_temporary.to_csv(filename, mode='a', index=False, header=False)
+    # filename = 'gase_temp.csv'
+    # if os.path.exists(filename):
+    #     df_temporary.to_csv(filename, mode='a', index=False, header=False)
+    # else:
+    #     df_temporary.to_csv(filename, index=False)
+    #
+    # ------Export to sheets--------
+    # Get existing column names from the worksheet
+    existing_column_names = worksheet.row_values(1)
+
+    # Compare column names
+    column_names = df_temporary.columns.tolist()
+    column_names_exist = all(name in existing_column_names for name in column_names)
+
+    if column_names_exist:
+        print("All column names already exist in the worksheet.")
+        # Convert the DataFrame to a list of lists
+        data = df_temporary.values.tolist()
+
+        # Append the data to the worksheet
+        worksheet.append_rows(data)
     else:
-        df_temporary.to_csv(filename, index=False)
+        print("Some column names are missing in the worksheet.")
+        # Convert the DataFrame to a list of lists, including column names as the first row
+        data = [df_temporary.columns.tolist()] + df_temporary.values.tolist()
+
+        # Append the data to the worksheet
+        worksheet.append_rows(data)
+
 
 
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
@@ -306,11 +354,20 @@ def load_data(sheets_url):
     csv_url = sheets_url.replace("/edit#gid=", "/export?format=csv&gid=")
     return pd.read_csv(csv_url)
 
+def load_gsheets():
+    # Read all values from the worksheet
+    values = worksheet.get_all_values()
+
+    # Convert the values to a Pandas DataFrame
+    df = pd.DataFrame(values[1:], columns=values[0])
+
+    return df
 
 def map_gase():
     # load main dataset
-    df = load_data('gase_temp.csv')
-    df = df.fillna(1)
+    # df = load_data('gase_temp.csv')
+    df = load_gsheets()
+    df = df.fillna(0)
     # drop the Number customized column
     # df = df.drop('No', axis=1)
 
@@ -333,8 +390,15 @@ def map_gase():
     # Function to update the heatmap
     def update_heatmap():
         # Reload the dataset
-        gase_dataset = pd.read_csv('gase_temp.csv')
+        # gase_dataset = pd.read_csv('gase_temp.csv')
+        gase_dataset = load_gsheets()
         gase_dataset = gase_dataset.fillna(0)
+        print(gase_dataset)
+
+        # Convert columns to the desired data types
+        gase_dataset['Latitude'] = gase_dataset['Latitude'].astype(float)
+        gase_dataset['Longitude'] = gase_dataset['Longitude'].astype(float)
+        gase_dataset['Detected'] = gase_dataset['Detected'].astype(int)
 
         # Create a new map object to clear the layers
         new_map = leafmap.Map(height="1020px", width="720px",
@@ -346,7 +410,7 @@ def map_gase():
         )
         vmin = gase_dataset['Detected'].min()
         vmax = gase_dataset['Detected'].max()
-        gradient = {(vmin / vmax): 'blue', 1: 'red'}
+        gradient = {(int(vmin) / int(vmax)): 'blue', 1: 'red'}
 
         # Add the updated heatmap layer
         new_map.add_heatmap(
