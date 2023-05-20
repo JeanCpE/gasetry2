@@ -1,5 +1,7 @@
 # GASE Egg Hotspot Mapping Prototype App
 # -------Dependencies-----------
+import time
+
 import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit.web.cli import main
@@ -32,10 +34,11 @@ import json
 # dependencies for Google API
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload, MediaFileUpload
 import io
 
 import logging
+import shutil
 
 log_file = "loghome.log"
 
@@ -52,18 +55,42 @@ credentials = service_account.Credentials.from_service_account_info(
 
 # Create a Google Drive service object
 drive_service = build('drive', 'v3', credentials=credentials)
-folder_id = "1A102nf_J2ouBoZOds_3OTXYAAtp6cFdX"
+uploads_folder_id = "1YVBCShIKrM4JTBtrtxERrG_DiCnIz7ok"
+detected_folder_id = "1nDqReeYv1OL_mKKKHjj8iUkGKh8islBZ"
+
+
+def get_recent(folder_id):
+    # List the most recently uploaded file
+    results = drive_service.files().list(
+        q=f"'{folder_id}' in parents",
+        pageSize=1,
+        orderBy='createdTime desc',
+        fields='files(id, name, webContentLink)',
+    ).execute()
+    return results
 
 
 def upload_to_drive(uploaded_file, folder_id):
-    # Create file metadata with parent folder ID
-    file_metadata = {
-        'name': uploaded_file.name,
-        'parents': [folder_id]
-    }
+    if isinstance(uploaded_file, str):
+        print(f"(string) uploaded_file: {uploaded_file}")
+        file_metadata = {
+            'name': os.path.basename(uploaded_file),
+            'parents': [folder_id]
+        }
 
-    # Create media object with uploaded file
-    media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type)
+        # Create media object with uploaded file
+        media = MediaFileUpload(uploaded_file, mimetype='application/octet-stream')
+    else:
+        print(f" uploaded_file: {uploaded_file}")
+        # Create file metadata with parent folder ID
+        file_metadata = {
+            'name': uploaded_file.name,
+            'parents': [folder_id]
+        }
+
+        # Create media object with uploaded file
+        media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type)
+
 
     # Upload the file to Google Drive
     drive_service.files().create(
@@ -72,7 +99,8 @@ def upload_to_drive(uploaded_file, folder_id):
         fields='id'
     ).execute()
 
-    st.success("File uploaded successfully!")
+
+    # st.success("File uploaded successfully!")
 
     # except Exception as e:
     #     st.error(f"Error uploading file: {str(e)}")
@@ -98,10 +126,10 @@ def load_image(image_file):
 
 def detection(image_file, text):
     # Convert uploaded file to image object
-    file_path = image_file.name  # Get Image file name
+    file_name = image_file.name  # Get Image file name
 
     # Save the uploaded file to disk
-    with open("uploads/" + file_path, "wb") as f:
+    with open("uploads/" + file_name, "wb") as f:
         f.write(image_file.getbuffer())
         # Show image save success
         text.markdown(f"<div style='text-align: center;font-size: 24px;'>File Saved!</div>", unsafe_allow_html=True)
@@ -118,7 +146,7 @@ def detection(image_file, text):
         detect.parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
         print('conf args added')
 
-    detect.parser.set_defaults(weights='exp-18-last.pt', conf_thres=0.1, source=("uploads/" + file_path))
+    detect.parser.set_defaults(weights='exp-18-last.pt', conf_thres=0.1, source="uploads/" + file_name)
     args = detect.parser.parse_args()
 
     text.markdown(f"<div style='text-align: center;font-size: 24px;font-weight: bold;'>Running Detection</div>",
@@ -134,26 +162,40 @@ def detection(image_file, text):
             unsafe_allow_html=True)
     print(f'number of detection:{gase_detection}')
     display(gase_detection)
-    return gase_detection
+    return gase_detection  # number of detection
 
-
-def show_detection(image_file):
-    # Specify the directory to scan
-    directory = 'runs/detect'
-
+def detect_directory(directory):
+    print(f"directory{directory}")
     # Get a list of all directories in the specified directory
     directories = [entry.path for entry in os.scandir(directory) if entry.is_dir()]
 
     # Sort the directories by modification time in descending order
     directories.sort(key=lambda x: os.path.getmtime(x), reverse=True)
 
-    # Get the latest directory
-    # latest_directory = directories[0]
+    if directories:
+        # Sort the directories by modification time in descending order
+        directories.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+        return directories
+    else:
 
-    print("Latest directory:", directories[0])
+        print("No directories found in the specified directory.")
+        return 0
+
+def show_detection(image_file):
+    directories = detect_directory('runs/detect')
     # Get the latest directory / Image file name
     return directories[0] + "/" + image_file.name
 
+def delete_detect_local():
+    directories = detect_directory('runs/detect')
+    if directories != 0:
+        last_exp_path = directories[0]
+        # Delete the folder and its contents
+        try:
+            shutil.rmtree(last_exp_path)
+            print("Folder deleted successfully.")
+        except FileNotFoundError:
+            print("Folder not found.")
 
 def check_exif(uploaded_file):
     img = Image.open(uploaded_file)
@@ -294,10 +336,10 @@ def map_gase():
             name="Google Satellite",
             attribution="Google",
         )
-        colors = ['blue', 'green', 'yellow', 'red']
         vmin = gase_dataset['Detected'].min()
         vmax = gase_dataset['Detected'].max()
-        new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12, width=50, height=20)
+        gradient = {(vmin / vmax): 'blue', 1: 'red'}
+
         # Add the updated heatmap layer
         new_map.add_heatmap(
             gase_dataset,
@@ -309,15 +351,28 @@ def map_gase():
             layer_control=True,
             overlay=True,
             control_scale=True,
-            cmap=colors,
+            gradient=gradient,
             opacity=0.7,
             min_opacity=0.5,
         )
 
-        # new_colors = ['blue', 'green', 'yellow','red']
-        # new_vmin = gase_dataset['Detected'].min()
-        # new_vmax = gase_dataset['Detected'].sum()
-        # new_map.add_colorbar(colors=new_colors, vmin=new_vmin, vmax=new_vmax, font_size=6)
+        # # Get the width of the map
+        # map_width = m.width
+        #
+        # # Extract the numerical value
+        # numeric_width = float(map_width[0])
+        #
+        # # Convert the percentage width to pixels if using JAVA
+        # #container_width = numeric_width * window.innerWidth / 100
+        # # Set the container width in pixels
+        # container_width = numeric_width * 10  # Adjust the scaling factor as needed
+        #
+        # # Print the width in pixels
+        # print("Map width (pixels):", container_width)
+        # color_bar_width = container_width*0.5
+        color_bar_width = 5
+        colors = ['blue', 'red']
+        new_map.add_colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=12, width=int(color_bar_width))
 
         # This is used to display the map within the bounded settings of Width and Height
         new_map.to_streamlit(add_layer_control=True)
@@ -370,8 +425,28 @@ def main():
             uploaded_file = st.file_uploader("Please upload an image containing GAS eggs:", type=["jpg", "jpeg", "png"],
                                              label_visibility="collapsed")
             if uploaded_file is not None:
-                upload_to_drive(uploaded_file, folder_id)
                 logging.info(f"uploaded_file is not None")
+                delete_detect_local()
+
+                # upload_results = get_recent(uploads_folder_id)
+                # if 'files' in upload_results:
+                #     file = upload_results['files'][0]
+                    # image_url = file['webContentLink']
+                    # st.write("Most recent image:")
+                    # st.image(image_url)
+                    # st.write("Name:", file['name'])
+                    # st.write("ID:", file['id'])
+                # else:
+                #     st.write("No image found in the folder.")
+
+                # if files:
+                #     # file = files[0]
+                #     # print(f"Most recently uploaded file: {file['name']} ({file['id']})")
+                #     print("Files:")
+                #     for file in files:
+                #         print(f"{file['name']} ({file['id']})[{file['webContentLink']}]")
+                # else:
+                #     print("No files found in Drive.")
 
                 # Read the uploaded file and convert it into an image object
                 logging.info(f"displaying uploaded_file")
@@ -381,15 +456,24 @@ def main():
                 if check_exif(uploaded_file):
                     logging.info(f"detection(uploaded_file)")
                     gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
+
                     logging.info(f"detection done. gase_detected= {gase_detected}")
                     new_image_path = show_detection(uploaded_file)  # shall return file path
                     logging.info(f"new_image_path = {new_image_path}")
+
                     # Display image with bounding boxes
                     img.image(new_image_path, caption='New Image')
                     logging.info(f"Image Changed")
                     if int(gase_detected) > 0:
                         logging.info(f"getting GPS of upload")
                         upload_gps(uploaded_file, int(gase_detected))
+                        upload_to_drive(uploaded_file, uploads_folder_id)
+
+                        # Wait for 100 milliseconds
+                        time.sleep(2.0)
+                        last_exp_path = new_image_path
+                        upload_to_drive(last_exp_path, detected_folder_id)
+
 
         elif option == "Camera":
             lat, lon = camera_gps()
