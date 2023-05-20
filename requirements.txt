@@ -122,3 +122,4 @@ opencv_python_headless==4.5.2.54
 google_api_python_client==2.86.0
 oauth2client==3.0.0
 streamlit_option_menu == 0.3.2
+streamlit-js-eval == 0.1.5
