@@ -491,7 +491,7 @@ def main():
             }
             </style>
             """, unsafe_allow_html=True)
-        option = st.radio("Choose a method:", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
+        option = st.radio("Choose a method:", ["Camera", "Upload"], horizontal=True, label_visibility="collapsed")
         logging.info(f"Option = {option}")
         # Display initial text
         text = st.empty()  # Create an empty placeholder for the text
