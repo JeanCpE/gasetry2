@@ -521,11 +521,11 @@ def main():
                     if int(gase_detected) > 0:
                         logging.info(f"getting GPS of upload")
                         upload_gps(uploaded_file, int(gase_detected))
-                        upload_to_drive(uploaded_file, uploads_folder_id)
 
                         # Wait for 100 milliseconds
                         time.sleep(2.0)
                         last_exp_path = new_image_path
+                        upload_to_drive(uploaded_file, uploads_folder_id)
                         upload_to_drive(last_exp_path, detected_folder_id)
                 # except:
                 #     st.error("An error has occured in detection", icon="🚩")
@@ -551,13 +551,13 @@ def main():
                 logging.info(f"Image Changed")
 
                 if int(gase_detected) > 0:
-                    upload_to_drive(image_file, uploads_folder_id)
                     logging.info(f"getting GPS of device")
                     gps_to_csv(lat, lon, gase_detected)
 
                     # Wait for 100 milliseconds
                     time.sleep(2.0)
                     last_exp_path = new_image_path
+                    upload_to_drive(image_file, uploads_folder_id)
                     upload_to_drive(last_exp_path, detected_folder_id)
             # except:
             #     st.error("An error has occured in detection", icon="🚩")

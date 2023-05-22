@@ -146,7 +146,7 @@ def detect(opt, save_img=False):
                     if save_img or view_img:  # Add bbox to image
                         label = f'{names[int(cls)]}' # {conf:.2f}'
                         if im0.shape[0] < 720:
-                            plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=2)
+                            plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=1)
                         else:
                             plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=5)
 
@@ -234,7 +234,7 @@ def main(args=None):
     if 'project' not in [action.dest for action in parser._actions]:
         parser.add_argument('--project', default='runs/detect', help='save results to project/name')
     if 'name' not in [action.dest for action in parser._actions]:
-        parser.add_argument('--name', default='exp', help='save results to project/name')
+        parser.add_argument('--name', default='exp', help='save results to pro  ject/name')
     if 'exist_ok' not in [action.dest for action in parser._actions]:
         parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     if 'no_trace' not in [action.dest for action in parser._actions]:
