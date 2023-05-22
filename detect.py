@@ -20,7 +20,14 @@ from IPython.display import display
 import os
 
 parser = argparse.ArgumentParser()
-
+import streamlit as st
+@st.cache_data
+def load_model(weights,device,imgsz):
+    # Load model
+    model = attempt_load(weights, map_location=device)  # load FP32 model
+    stride = int(model.stride.max())  # model stride
+    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+    return model,stride,imgsz
 
 def detect(opt, save_img=False):
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
@@ -37,10 +44,7 @@ def detect(opt, save_img=False):
     device = select_device(opt.device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
 
-    # Load model
-    model = attempt_load(weights, map_location=device)  # load FP32 model
-    stride = int(model.stride.max())  # model stride
-    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+    model, stride, imgsz = load_model(weights, device, imgsz)
 
     if trace:
         model = TracedModel(model, device, opt.img_size)

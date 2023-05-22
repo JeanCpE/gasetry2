@@ -72,16 +72,6 @@ client = gspread.authorize(sheets_credentials)
 spreadsheet = client.open('GASE_Detect')
 worksheet = spreadsheet.sheet1
 
-# # Update a cell value
-# sheet.update('A1', 'New Value')
-#
-# # Get all values from a range
-# values = sheet.get_all_values()
-# print(values)
-#
-# # Add a new row
-# new_row = ['Value 1', 'Value 2', 'Value 3']
-# sheet.append_row(new_row)
 
 
 def get_recent(folder_id):
@@ -136,9 +126,20 @@ page_icon = ":seedling:"
 layout = "centered"
 
 logging.info(f'page_title = {page_title}, page_icon = {page_icon}, layout{layout}')
-
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 st.title(page_title + " " + page_icon)
+#hide header and footer
+hide_streamlit_style = """
+            <style>
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# st.markdown("<h1 style='text-align: center;'>Gase App</h1>", unsafe_allow_html=True)
+
+
 
 
 # st.markdown("<h1 style='text-align: center;'>Gase App</h1>", unsafe_allow_html=True)
@@ -172,6 +173,7 @@ def detection(image_file, text):
         print('conf args added')
 
     detect.parser.set_defaults(weights='exp-18-last.pt', conf_thres=0.1, source="uploads/" + file_name)
+
     args = detect.parser.parse_args()
 
     text.markdown(f"<div style='text-align: center;font-size: 24px;font-weight: bold;'>Running Detection</div>",
@@ -506,27 +508,27 @@ def main():
                 logging.info(f"uploaded_file displayed")
 
                 if check_exif(uploaded_file):
-                    try:
-                        logging.info(f"detection(uploaded_file)")
-                        gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
-                        logging.info(f"detection done. gase_detected= {gase_detected}")
-                        new_image_path = show_detection(uploaded_file)  # shall return file path
-                        logging.info(f"new_image_path = {new_image_path}")
+                # try:
+                    logging.info(f"detection(uploaded_file)")
+                    gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
+                    logging.info(f"detection done. gase_detected= {gase_detected}")
+                    new_image_path = show_detection(uploaded_file)  # shall return file path
+                    logging.info(f"new_image_path = {new_image_path}")
 
-                        # Display image with bounding boxes
-                        img.image(new_image_path, caption='New Image')
-                        logging.info(f"Image Changed")
-                        if int(gase_detected) > 0:
-                            logging.info(f"getting GPS of upload")
-                            upload_gps(uploaded_file, int(gase_detected))
-                            upload_to_drive(uploaded_file, uploads_folder_id)
+                    # Display image with bounding boxes
+                    img.image(new_image_path, caption='New Image')
+                    logging.info(f"Image Changed")
+                    if int(gase_detected) > 0:
+                        logging.info(f"getting GPS of upload")
+                        upload_gps(uploaded_file, int(gase_detected))
+                        upload_to_drive(uploaded_file, uploads_folder_id)
 
-                            # Wait for 100 milliseconds
-                            time.sleep(2.0)
-                            last_exp_path = new_image_path
-                            upload_to_drive(last_exp_path, detected_folder_id)
-                    except:
-                        st.error("An error has occured in detection", icon="🚩")
+                        # Wait for 100 milliseconds
+                        time.sleep(2.0)
+                        last_exp_path = new_image_path
+                        upload_to_drive(last_exp_path, detected_folder_id)
+                # except:
+                #     st.error("An error has occured in detection", icon="🚩")
         elif option == "Camera":
             lat, lon = camera_gps()
             st.write("Please drag and drop a photo below:")
@@ -537,28 +539,28 @@ def main():
                 logging.info(f"displaying image_file")
                 img = st.image(load_image(image_file))
                 logging.info(f"image_file displayed")
-                try:
-                    # Start detection
-                    logging.info(f"detection(uploaded_file)")
-                    gase_detected = detection(image_file, text)
-                    logging.info(f"detection done. gase_detected= {gase_detected}")
-                    new_image_path = show_detection(image_file)  # shall return file path
-                    # Show detection
-                    logging.info(f"new_image_path = {new_image_path}")
-                    img.image(new_image_path, caption='New Image')
-                    logging.info(f"Image Changed")
+            # try:
+                # Start detection
+                logging.info(f"detection(uploaded_file)")
+                gase_detected = detection(image_file, text)
+                logging.info(f"detection done. gase_detected= {gase_detected}")
+                new_image_path = show_detection(image_file)  # shall return file path
+                # Show detection
+                logging.info(f"new_image_path = {new_image_path}")
+                img.image(new_image_path, caption='New Image')
+                logging.info(f"Image Changed")
 
-                    if int(gase_detected) > 0:
-                        upload_to_drive(image_file, uploads_folder_id)
-                        logging.info(f"getting GPS of device")
-                        gps_to_csv(lat, lon, gase_detected)
+                if int(gase_detected) > 0:
+                    upload_to_drive(image_file, uploads_folder_id)
+                    logging.info(f"getting GPS of device")
+                    gps_to_csv(lat, lon, gase_detected)
 
-                        # Wait for 100 milliseconds
-                        time.sleep(2.0)
-                        last_exp_path = new_image_path
-                        upload_to_drive(last_exp_path, detected_folder_id)
-                except:
-                    st.error("An error has occured in detection", icon="🚩")
+                    # Wait for 100 milliseconds
+                    time.sleep(2.0)
+                    last_exp_path = new_image_path
+                    upload_to_drive(last_exp_path, detected_folder_id)
+            # except:
+            #     st.error("An error has occured in detection", icon="🚩")
 
     elif choice == "GAS Eggs Heatmap":
         map_gase()
