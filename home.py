@@ -132,6 +132,7 @@ st.title(page_title + " " + page_icon)
 hide_streamlit_style = """
             <style>
             header {visibility: hidden;}
+            a {visibility: hidden;}
             footer {visibility: hidden;}
             </style>
             """
