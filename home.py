@@ -137,7 +137,7 @@ hide_streamlit_style = """
             </style>
             """
 
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # st.markdown("<h1 style='text-align: center;'>Gase App</h1>", unsafe_allow_html=True)
 
 
