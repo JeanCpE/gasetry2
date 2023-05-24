@@ -144,7 +144,7 @@ def detect(opt, save_img=False):
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
                     if save_img or view_img:  # Add bbox to image
-                        label = f'{names[int(cls)]}' # {conf:.2f}'
+                        label = f'{names[int(cls)]} {conf:.2f}'
                         if im0.shape[0] < 720:
                             plot_one_box(xyxy, im0, label=label, color=(91, 17, 3), line_thickness=1)
                         else:
