@@ -7,6 +7,7 @@ from streamlit_option_menu import option_menu
 from streamlit.web.cli import main
 import pandas as pd
 import leafmap.foliumap as leafmap
+import folium
 
 # dependencies for gps
 from PIL import Image
@@ -41,6 +42,7 @@ from Colorbar import Colorbar
 
 import logging
 import shutil
+from streamlit.components.v1 import html
 
 log_file = "loghome.log"
 
@@ -48,7 +50,7 @@ logging.basicConfig(filename=log_file, level=logging.INFO)
 
 # ------START----
 logging.info('~~APP STARTED~~')
-#----- Google Drive ------
+# ----- Google Drive ------
 # Set the Google Drive API credentials
 credentials = service_account.Credentials.from_service_account_info(
     st.secrets["gdata_drive"],
@@ -60,8 +62,9 @@ drive_service = build('drive', 'v3', credentials=credentials)
 uploads_folder_id = "1YVBCShIKrM4JTBtrtxERrG_DiCnIz7ok"
 detected_folder_id = "1nDqReeYv1OL_mKKKHjj8iUkGKh8islBZ"
 
-#------Google Sheets--------------
+# ------Google Sheets--------------
 import gspread
+
 sheets_credentials = service_account.Credentials.from_service_account_info(
     st.secrets["gdata_sheets"],
     scopes=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -71,7 +74,6 @@ sheets_credentials = service_account.Credentials.from_service_account_info(
 client = gspread.authorize(sheets_credentials)
 spreadsheet = client.open('GASE_Detect')
 worksheet = spreadsheet.sheet1
-
 
 
 def get_recent(folder_id):
@@ -106,14 +108,12 @@ def upload_to_drive(uploaded_file, folder_id):
         # Create media object with uploaded file
         media = MediaIoBaseUpload(uploaded_file, mimetype=uploaded_file.type)
 
-
     # Upload the file to Google Drive
     drive_service.files().create(
         body=file_metadata,
         media_body=media,
         fields='id'
     ).execute()
-
 
     # st.success("File uploaded successfully!")
 
@@ -128,19 +128,15 @@ layout = "centered"
 logging.info(f'page_title = {page_title}, page_icon = {page_icon}, layout{layout}')
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 st.title(page_title + " " + page_icon)
-#hide header and footer
+# hide header and footer
 hide_streamlit_style = """
             <style>
             header {visibility: hidden;}
-            a {visibility: hidden;}
             footer {visibility: hidden;}
             </style>
             """
 
-# st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-# st.markdown("<h1 style='text-align: center;'>Gase App</h1>", unsafe_allow_html=True)
-
-
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
 # st.markdown("<h1 style='text-align: center;'>Gase App</h1>", unsafe_allow_html=True)
@@ -193,6 +189,7 @@ def detection(image_file, text):
     display(gase_detection)
     return gase_detection  # number of detection
 
+
 def detect_directory(directory):
     print(f"directory{directory}")
     # Get a list of all directories in the specified directory
@@ -210,10 +207,12 @@ def detect_directory(directory):
         print("No directories found in the specified directory.")
         return 0
 
+
 def show_detection(image_file):
     directories = detect_directory('runs/detect')
     # Get the latest directory / Image file name
     return directories[0] + "/" + image_file.name
+
 
 def delete_detect_local():
     directories = detect_directory('runs/detect')
@@ -225,6 +224,8 @@ def delete_detect_local():
             print("Folder deleted successfully.")
         except FileNotFoundError:
             print("Folder not found.")
+
+
 def delete_uploads_local(image_path):
     # Delete the image file
     try:
@@ -232,6 +233,7 @@ def delete_uploads_local(image_path):
         print("Image file deleted successfully.")
     except FileNotFoundError:
         print("Image file not found.")
+
 
 def check_exif(uploaded_file):
     img = Image.open(uploaded_file)
@@ -314,9 +316,9 @@ def gps_to_csv(lat, lon, gase_detected):
                                  'Longitude': [lon],
                                  'Detected': [gase_detected]
                                  })
-                                 # 'Altitude': [alt],
-                                 #  'Time':[],
-                                 #  'Date':[]
+    # 'Altitude': [alt],
+    #  'Time':[],
+    #  'Date':[]
 
     # ---Fill zero values with 0--
     df_temporary = df_temporary.dropna(how='any')
@@ -352,12 +354,12 @@ def gps_to_csv(lat, lon, gase_detected):
         worksheet.append_rows(data)
 
 
-
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
 @st.cache_data(ttl=600)
 def load_data(sheets_url):
     csv_url = sheets_url.replace("/edit#gid=", "/export?format=csv&gid=")
     return pd.read_csv(csv_url)
+
 
 def load_gsheets():
     # Read all values from the worksheet
@@ -367,6 +369,7 @@ def load_gsheets():
     df = pd.DataFrame(values[1:], columns=values[0])
 
     return df
+
 
 def map_gase():
     # load main dataset
@@ -413,6 +416,7 @@ def map_gase():
             name="Google Satellite",
             attribution="Google",
         )
+
         vmin = gase_dataset['Detected'].min()
         vmax = gase_dataset['Detected'].max()
         gradient = {(int(vmin) / int(vmax)): 'blue', 1: 'red'}
@@ -448,7 +452,6 @@ def map_gase():
         # Create a colorbar instance
         colorbar = Colorbar(colors=colors, vmin=vmin, vmax=vmax, font_size=font_size, width_percentage=width_percentage)
 
-        # This is used to display the map within the bounded settings of Width and Height
         new_map.to_streamlit(add_layer_control=True)
         st.markdown(colorbar.to_html(), unsafe_allow_html=True)
 
@@ -482,16 +485,23 @@ def main():
             unsafe_allow_html=True)
 
         st.markdown(
-            '<style>div.row-widget.stRadio div{flex-direction:row;justify-content: center; padding-top: {1}rem} </style>',
+            '<style>div.row-widget.stRadio div{justify-content: center; padding-top: {1}rem} </style>',
             unsafe_allow_html=True)
-        st.markdown(
-            """<style>
-            div[class*="stFileUploader"] > label > div[data-testid="stMarkdownContainer"] > p {
-            font-size: 20px;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-        option = st.radio("Choose a method:", ["Camera", "Upload"], horizontal=True, label_visibility="collapsed")
+
+        # # Custom HTML Code
+        # html_code = '''
+        # <script>
+        #     document.addEventListener("DOMContentLoaded", function () {
+        #         var radioButton = document.getElementById("radioButton");
+        #         radioButton.id = "cameraRadioButton";
+        #     });
+        # </script>
+        # '''
+        # st.markdown(html_code, unsafe_allow_html=True)
+
+        option = st.radio("Choose a method:", ["Camera", "Upload"], horizontal=True, label_visibility="collapsed",
+                          key="radioButton")
+
         logging.info(f"Option = {option}")
         # Display initial text
         text = st.empty()  # Create an empty placeholder for the text
@@ -509,7 +519,7 @@ def main():
                 logging.info(f"uploaded_file displayed")
 
                 if check_exif(uploaded_file):
-                # try:
+                    # try:
                     logging.info(f"detection(uploaded_file)")
                     gase_detected = detection(uploaded_file, text)  # shall return numbers of detected GASE
                     logging.info(f"detection done. gase_detected= {gase_detected}")
@@ -540,7 +550,7 @@ def main():
                 logging.info(f"displaying image_file")
                 img = st.image(load_image(image_file))
                 logging.info(f"image_file displayed")
-            # try:
+                # try:
                 # Start detection
                 logging.info(f"detection(uploaded_file)")
                 gase_detected = detection(image_file, text)
