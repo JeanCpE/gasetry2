@@ -169,7 +169,7 @@ def detection(image_file, text):
         detect.parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
         print('conf args added')
 
-    detect.parser.set_defaults(weights='exp-18-last.pt', conf_thres=0.1, source="uploads/" + file_name)
+    detect.parser.set_defaults(weights='best87-1.pt', conf_thres=0.1, source="uploads/" + file_name)
 
     args = detect.parser.parse_args()
 
