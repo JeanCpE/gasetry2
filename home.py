@@ -168,8 +168,10 @@ def detection(image_file, text):
     if 'conf_thres' not in [action.dest for action in detect.parser._actions]:
         detect.parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
         print('conf args added')
+    if 'classes' not in [action.dest for action in parser._actions]:
+        parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
 
-    detect.parser.set_defaults(weights='best87-1.pt', conf_thres=0.1, source="uploads/" + file_name)
+    detect.parser.set_defaults(weights='best87-1.pt', conf_thres=0.1, source="uploads/" + file_name, classes=3)
 
     args = detect.parser.parse_args()
 
